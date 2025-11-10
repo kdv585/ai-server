@@ -2,8 +2,63 @@
 
 import { useState } from "react";
 
+interface Messenger {
+  code: number;
+  message: string;
+  data?: any;
+}
+
 export default function Home() {
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSearch = async () => {
+    const trimmedInput = input.trim();
+    if (!trimmedInput) {
+      alert("입력된 텍스트가 없습니다.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Next.js API 라우트를 통해 프록시 요청
+      const params = new URLSearchParams({
+        keyword: trimmedInput,
+      });
+
+      const url = `/api/soccer/search?${params.toString()}`;
+      console.log("요청 URL:", url);
+      console.log("입력한 검색어:", trimmedInput);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API 응답 오류:", response.status, errorText);
+        throw new Error(`API 요청 실패 (${response.status}): ${errorText}`);
+      }
+
+      const data: Messenger = await response.json();
+      console.log("백엔드 응답:", data);
+
+      // 응답 데이터를 알러트로 표시
+      const alertMessage = data.data
+        ? JSON.stringify(data.data, null, 2)
+        : data.message || "데이터가 없습니다.";
+
+      alert(alertMessage);
+    } catch (error) {
+      console.error("에러 발생:", error);
+      alert(`에러가 발생했습니다: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
 
@@ -51,19 +106,17 @@ export default function Home() {
                 placeholder="전체 축구팀 목록을 알려줘."
                 className="flex-1 py-3 px-2 text-gray-900 placeholder-gray-500 bg-transparent border-none outline-none text-base"
                 onKeyPress={(e) => {
-                  if (e.key === "Enter" && input.trim()) {
-                    // 여기에 전송 로직 추가 가능
-                    console.log("전송:", input);
+                  if (e.key === "Enter" && !loading) {
+                    handleSearch();
                   }
                 }}
               />
 
               {/* 마이크 아이콘 */}
               <button
-                className="p-3 text-gray-600 hover:text-gray-900"
-                onClick={() => {
-                  alert(input || "입력된 텍스트가 없습니다.");
-                }}
+                className="p-3 text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                onClick={handleSearch}
+                disabled={loading}
               >
                 <svg
                   width="20"
